@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 import calendar
+import io
 from typing import Optional
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, numbers
 
 
 app = Flask(__name__)
@@ -205,6 +208,62 @@ def format_money(value: float) -> str:
     return f"{value:,.2f}".replace(",", " ")
 
 
+def build_excel(schedule: list[dict[str, float | int]], result: MortgageResult) -> io.BytesIO:
+    # Собираем Excel-файл с графиком платежей.
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "График платежей"
+
+    headers = [
+        "Месяц",
+        "Дата",
+        "Платеж",
+        "Проценты",
+        "Основной долг",
+        "Остаток",
+    ]
+    sheet.append(headers)
+
+    header_font = Font(bold=True)
+    for cell in sheet[1]:
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for row in schedule:
+        sheet.append(
+            [
+                row["month"],
+                row["date"],
+                row["payment"],
+                row["interest"],
+                row["principal"],
+                row["balance"],
+            ]
+        )
+
+    money_format = numbers.FORMAT_NUMBER_COMMA_SEPARATED1
+    for row in sheet.iter_rows(min_row=2, min_col=3, max_col=6):
+        for cell in row:
+            cell.number_format = money_format
+
+    sheet.append([])
+    sheet.append(["Итоги", "", result.total_paid, result.total_interest, result.loan_amount, ""])
+    for cell in sheet[sheet.max_row]:
+        cell.font = header_font
+
+    sheet.column_dimensions["A"].width = 10
+    sheet.column_dimensions["B"].width = 12
+    sheet.column_dimensions["C"].width = 16
+    sheet.column_dimensions["D"].width = 16
+    sheet.column_dimensions["E"].width = 18
+    sheet.column_dimensions["F"].width = 16
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     # Отображаем форму и результат расчета.
@@ -242,6 +301,21 @@ def index():
         error=error,
         values=values,
         format_money=format_money,
+    )
+
+
+@app.route("/export", methods=["POST"])
+def export_excel():
+    # Экспортируем график платежей в Excel.
+    data = parse_form(request.form)
+    result = calculate_mortgage(data)
+    output = build_excel(result.schedule, result)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="mortgage_schedule.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 

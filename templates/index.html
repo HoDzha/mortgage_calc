@@ -143,6 +143,17 @@
             </div>
           </div>
 
+          <form class="export" method="post" action="/export">
+            <input type="hidden" name="principal" value="{{ values.principal }}" />
+            <input type="hidden" name="down_payment" value="{{ values.down_payment }}" />
+            <input type="hidden" name="down_payment_percent" value="{{ values.down_payment_percent }}" />
+            <input type="hidden" name="extra_payment" value="{{ values.extra_payment }}" />
+            <input type="hidden" name="prepayment_strategy" value="{{ values.prepayment_strategy }}" />
+            <input type="hidden" name="years" value="{{ values.years }}" />
+            <input type="hidden" name="annual_rate" value="{{ values.annual_rate }}" />
+            <button class="button button--ghost" type="submit">Скачать Excel</button>
+          </form>
+
           <section class="schedule">
             <div class="schedule__header">
               <h2>График расчетов</h2>
