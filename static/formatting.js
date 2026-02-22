@@ -31,3 +31,21 @@ const bindFormatting = () => {
 };
 
 document.addEventListener("DOMContentLoaded", bindFormatting);
+
+document.addEventListener("DOMContentLoaded", () => {
+  const toggle = document.getElementById("installment-toggle");
+  const rateField = document.getElementById("rate-field");
+  const rateInput = rateField?.querySelector("input[name='annual_rate']");
+
+  if (!toggle || !rateField || !rateInput) {
+    return;
+  }
+
+  toggle.addEventListener("click", () => {
+    const isActive = toggle.classList.toggle("is-active");
+    rateField.classList.toggle("is-hidden", isActive);
+    if (isActive) {
+      rateInput.value = "";
+    }
+  });
+});

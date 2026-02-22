@@ -186,6 +186,29 @@ h1 {
   margin-bottom: 16px;
 }
 
+.toggle {
+  justify-self: start;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, border 0.2s ease;
+}
+
+.toggle.is-active {
+  background: rgba(250, 204, 21, 0.2);
+  border-color: rgba(250, 204, 21, 0.6);
+  color: #facc15;
+}
+
+.field.is-hidden {
+  display: none;
+}
+
 .field {
   display: grid;
   gap: 8px;
