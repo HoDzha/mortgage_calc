@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ипотечный калькулятор</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="background">
+      <!-- Анимированные фигуры на фоне -->
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+      <div class="shape shape-4"></div>
+      <div class="shape shape-5"></div>
+      <div class="mesh"></div>
+    </div>
+
+    <main class="page">
+      <section class="card">
+        <header class="card__header">
+          <p class="eyebrow">Mortgage Lab</p>
+          <h1>Ипотечный калькулятор</h1>
+          <p class="subtitle">Рассчитайте переплату по кредиту за пару секунд.</p>
+        </header>
+
+        <form class="form" method="post" novalidate>
+          <label class="field">
+            <span>Стоимость недвижимости</span>
+            <input
+              name="principal"
+              inputmode="decimal"
+              data-format="money"
+              placeholder="Например, 5 000 000"
+              value="{{ values.principal }}"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Первоначальный взнос</span>
+            <input
+              name="down_payment"
+              inputmode="decimal"
+              data-format="money"
+              placeholder="Например, 1 000 000 (необязательно)"
+              value="{{ values.down_payment }}"
+            />
+          </label>
+
+          <label class="field">
+            <span>Первоначальный взнос (%)</span>
+            <input
+              name="down_payment_percent"
+              inputmode="decimal"
+              placeholder="Например, 15 (необязательно)"
+              value="{{ values.down_payment_percent }}"
+            />
+          </label>
+
+          <label class="field">
+            <span>Срок (лет)</span>
+            <input
+              name="years"
+              inputmode="numeric"
+              data-format="years"
+              placeholder="Например, 20"
+              value="{{ values.years }}"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Процентная ставка</span>
+            <input
+              name="annual_rate"
+              inputmode="decimal"
+              data-format="rate"
+              placeholder="Например, 12.5"
+              value="{{ values.annual_rate }}"
+              required
+            />
+          </label>
+
+          <button class="button" type="submit">Рассчитать</button>
+        </form>
+
+        {% if error %}
+          <div class="notice notice--error">{{ error }}</div>
+        {% endif %}
+
+        {% if result %}
+          <div class="result">
+            <div class="result__item">
+              <span>Сумма кредита</span>
+              <strong>{{ format_money(result.loan_amount) }} ₽</strong>
+            </div>
+            <div class="result__item">
+              <span>Ежемесячный платеж</span>
+              <strong>{{ format_money(result.monthly_payment) }} ₽</strong>
+            </div>
+            <div class="result__item">
+              <span>Переплата по процентам</span>
+              <strong>{{ format_money(result.overpayment) }} ₽</strong>
+            </div>
+            <div class="result__item">
+              <span>Всего выплат</span>
+              <strong>{{ format_money(result.total_paid) }} ₽</strong>
+            </div>
+            <div class="result__item highlight">
+              <span>Рекомендованный доход</span>
+              <strong>{{ format_money(result.required_income) }} ₽</strong>
+            </div>
+          </div>
+
+          <section class="schedule">
+            <div class="schedule__header">
+              <h2>График расчетов</h2>
+              <p>Соотношение основного долга и процентов по месяцам.</p>
+            </div>
+
+            <div class="chart" aria-hidden="true">
+              <canvas id="payment-chart"></canvas>
+              <div class="chart__tooltip" id="chart-tooltip">
+                <div class="tooltip__title" id="tooltip-title"></div>
+                <div class="tooltip__row">
+                  <span class="tooltip__swatch tooltip__swatch--principal"></span>
+                  <span>Основной долг</span>
+                  <strong id="tooltip-principal"></strong>
+                </div>
+                <div class="tooltip__row">
+                  <span class="tooltip__swatch tooltip__swatch--interest"></span>
+                  <span>Проценты</span>
+                  <strong id="tooltip-interest"></strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-legend">
+              <span class="legend legend--principal">Основной долг</span>
+              <span class="legend legend--interest">Проценты</span>
+            </div>
+
+            <div class="table">
+              <div class="table__head">
+                <span>Месяц</span>
+                <span>Платеж</span>
+                <span>Проценты</span>
+                <span>Основной долг</span>
+                <span>Остаток</span>
+              </div>
+              <div class="table__body">
+                {% for row in result.schedule %}
+                  <div class="table__row">
+                    <span>{{ row.month }}</span>
+                    <span>{{ format_money(row.payment) }} ₽</span>
+                    <span>{{ format_money(row.interest) }} ₽</span>
+                    <span>{{ format_money(row.principal) }} ₽</span>
+                    <span>{{ format_money(row.balance) }} ₽</span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </section>
+        {% endif %}
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='formatting.js') }}"></script>
+    {% if result %}
+      <script id="schedule-data" type="application/json">
+        {{ result.schedule | tojson }}
+      </script>
+      <script src="{{ url_for('static', filename='chart.js') }}"></script>
+    {% endif %}
+  </body>
+</html>
