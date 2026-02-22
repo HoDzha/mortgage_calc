@@ -19,6 +19,8 @@ class MortgageInput:
     principal: float
     down_payment: float
     down_payment_percent: float
+    extra_payment: float
+    prepayment_strategy: str
     years: int
     annual_rate: float
 
@@ -55,13 +57,13 @@ def calculate_mortgage(data: MortgageInput) -> MortgageResult:
         raise ValueError("Первоначальный взнос должен быть меньше суммы")
 
     if monthly_rate == 0:
-        monthly_payment = loan_amount / months
+        base_payment = loan_amount / months
     else:
         factor = (1 + monthly_rate) ** months
-        monthly_payment = loan_amount * (monthly_rate * factor) / (factor - 1)
+        base_payment = loan_amount * (monthly_rate * factor) / (factor - 1)
 
     # Банки обычно округляют ежемесячный платеж до копеек.
-    monthly_payment = round(monthly_payment, 2)
+    base_payment = round(base_payment, 2)
 
     # Формируем график платежей помесячно.
     schedule: list[dict[str, float | int]] = []
@@ -80,19 +82,25 @@ def calculate_mortgage(data: MortgageInput) -> MortgageResult:
         day = min(base_date.day, last_day)
         return date(year, month, day)
 
-    for month in range(1, months + 1):
+    current_payment = base_payment
+    month = 1
+
+    while balance > 0 and month <= months:
         # Начисленные проценты за месяц.
         interest = round(balance * monthly_rate, 2) if monthly_rate > 0 else 0.0
-        principal_payment = round(monthly_payment - interest, 2)
+
+        principal_payment = round(current_payment - interest, 2)
+        if principal_payment < 0:
+            principal_payment = 0.0
+
+        total_principal = round(principal_payment + data.extra_payment, 2)
 
         # Корректируем последний платеж, чтобы закрыть остаток.
-        if month == months:
-            principal_payment = round(balance, 2)
-            monthly_payment_actual = round(principal_payment + interest, 2)
-        else:
-            monthly_payment_actual = monthly_payment
+        if total_principal > balance:
+            total_principal = round(balance, 2)
 
-        balance = round(balance - principal_payment, 2)
+        monthly_payment_actual = round(interest + total_principal, 2)
+        balance = round(balance - total_principal, 2)
         total_interest = round(total_interest + interest, 2)
 
         payment_date = add_months(start_date, month - 1)
@@ -102,16 +110,28 @@ def calculate_mortgage(data: MortgageInput) -> MortgageResult:
                 "month": month,
                 "payment": monthly_payment_actual,
                 "interest": interest,
-                "principal": principal_payment,
+                "principal": total_principal,
                 "balance": max(balance, 0.0),
                 "date": payment_date.isoformat(),
             }
         )
 
+        # Пересчитываем платеж при стратегии уменьшения платежа.
+        remaining_months = months - month
+        if data.prepayment_strategy == "reduce_payment" and remaining_months > 0 and balance > 0:
+            if monthly_rate == 0:
+                current_payment = round(balance / remaining_months, 2)
+            else:
+                factor = (1 + monthly_rate) ** remaining_months
+                current_payment = round(balance * (monthly_rate * factor) / (factor - 1), 2)
+
+        month += 1
+
     total_paid = round(sum(item["payment"] for item in schedule), 2)
     overpayment = round(total_interest, 2)
 
     # Оцениваем минимальный доход по правилу 30%.
+    monthly_payment = schedule[0]["payment"] if schedule else base_payment
     required_income = monthly_payment / 0.3
 
     return MortgageResult(
@@ -143,6 +163,8 @@ def parse_form(form) -> MortgageInput:
     principal = parse_float(form.get("principal", ""))
     down_payment = parse_float(form.get("down_payment", ""))
     down_payment_percent = parse_float(form.get("down_payment_percent", ""))
+    extra_payment = parse_float(form.get("extra_payment", ""))
+    prepayment_strategy = form.get("prepayment_strategy", "reduce_term")
     years = parse_int(form.get("years", ""))
     annual_rate = parse_float(form.get("annual_rate", ""))
 
@@ -158,6 +180,10 @@ def parse_form(form) -> MortgageInput:
         raise ValueError("Укажите взнос либо суммой, либо процентом")
     if down_payment >= principal:
         raise ValueError("Первоначальный взнос должен быть меньше суммы")
+    if extra_payment < 0:
+        raise ValueError("Досрочный платеж не может быть отрицательным")
+    if prepayment_strategy not in {"reduce_term", "reduce_payment"}:
+        raise ValueError("Некорректная стратегия досрочного платежа")
     if years <= 0:
         raise ValueError("Срок должен быть больше нуля")
     if annual_rate < 0:
@@ -167,6 +193,8 @@ def parse_form(form) -> MortgageInput:
         principal=principal,
         down_payment=down_payment,
         down_payment_percent=down_payment_percent,
+        extra_payment=extra_payment,
+        prepayment_strategy=prepayment_strategy,
         years=years,
         annual_rate=annual_rate,
     )
@@ -186,6 +214,8 @@ def index():
         "principal": "",
         "down_payment": "",
         "down_payment_percent": "",
+        "extra_payment": "",
+        "prepayment_strategy": "reduce_term",
         "years": "",
         "annual_rate": "",
     }
@@ -198,6 +228,8 @@ def index():
                 "principal": request.form.get("principal", ""),
                 "down_payment": request.form.get("down_payment", ""),
                 "down_payment_percent": request.form.get("down_payment_percent", ""),
+                "extra_payment": request.form.get("extra_payment", ""),
+                "prepayment_strategy": request.form.get("prepayment_strategy", "reduce_term"),
                 "years": request.form.get("years", ""),
                 "annual_rate": request.form.get("annual_rate", ""),
             }

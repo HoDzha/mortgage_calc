@@ -46,6 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
     rateField.classList.toggle("is-hidden", isActive);
     if (isActive) {
       rateInput.value = "";
+      rateInput.required = false;
+      rateInput.disabled = true;
+    } else {
+      rateInput.disabled = false;
+      rateInput.required = true;
     }
   });
 });

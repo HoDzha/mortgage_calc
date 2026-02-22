@@ -66,6 +66,29 @@
           </label>
 
           <label class="field">
+            <span>Досрочный платеж (ежемесячно)</span>
+            <input
+              name="extra_payment"
+              inputmode="decimal"
+              data-format="money"
+              placeholder="Например, 20 000 (необязательно)"
+              value="{{ values.extra_payment }}"
+            />
+          </label>
+
+          <label class="field">
+            <span>Стратегия досрочного платежа</span>
+            <select name="prepayment_strategy" class="select">
+              <option value="reduce_term" {% if values.prepayment_strategy == 'reduce_term' %}selected{% endif %}>
+                Уменьшать срок
+              </option>
+              <option value="reduce_payment" {% if values.prepayment_strategy == 'reduce_payment' %}selected{% endif %}>
+                Уменьшать платеж
+              </option>
+            </select>
+          </label>
+
+          <label class="field">
             <span>Срок (лет)</span>
             <input
               name="years"
